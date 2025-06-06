@@ -124,4 +124,5 @@ data/audio/real/MALE and data/audio/real/FEMALE must exist
 
 female_data = extract_features('data/audio/real', 'data/audio/fake', gender_dict, 'female')
 male_data = extract_features('data/audio/real', 'data/audio/fake', gender_dict, 'male')
+balanced_data = pd.concat([female_data, male_data])
 '''
