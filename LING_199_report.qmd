@@ -390,9 +390,21 @@ Here, the least interpretable features are among the top 5 most important, as wi
 
 Here, feature importances will be compared and contrasted across the different models to identify consistent patterns as well as model-specific differences in how features influence predictions.
 
-Despite being trained exclusively on male data, the simple male model performed well on the full female dataset, outclassing the complex male neural network and XGBoost. This suggests that the model may have captured some gender-independent acoustic patterns that generalize better than expected.
+Despite being trained exclusively on male data, the simple male neural network performed well on the full female dataset, outclassing the complex male neural network and XGBoost. This suggests that the model may have captured some gender-independent acoustic patterns that generalize better than expected.
 
-The complex male neural network almost always classifies female audio as fake. In the raw male data, real audio typically has lower spectral centroid values, while fake audio tends to have higher values. In contrast, the female data exhibits the opposite pattern—higher spectral centroid values are associated with real audio. Consequently, when the male model encounters female audio with a high spectral centroid, it incorrectly associates this with the fake class. SHAP analysis of the model shows that higher values of spectral centroid—the most influential feature in the model—consistently contribute toward predictions of the fake class in the male data. Taking a look at the distributions of spectral centroid in the raw data, this pattern is visible. In this instance, SHAP interpretations agree with manual analysis.
+One potential explanation for the simple male neural network’s misclassification pattern may be in its decisions based on spectral bandwidth. In the SHAP analysis of the simple male neural network, lower spectral bandwidth values tend to push predictions toward the real class. In the raw male data, this pattern is visible. However, in the raw female dataset, this relationship is reversed—fake samples are more likely to exhibit lower spectral bandwidth values. Here, the model may have incorrectly associated low spectral bandwidth with real audio, and this is an instance where SHAP interpretations agree with manual analysis.
+
+</figure>
+
+<figure style="text-align: center;">
+
+![](images/spec_band_plot.png){width="99%"}
+
+<figcaption>Figure 21: Spectral Bandwidth: Real vs. Fake by Gender</figcaption>
+
+</figure>
+
+The complex male neural network almost always classifies female audio as fake. In the raw male data, real audio typically has lower spectral centroid values, while fake audio tends to have higher values. In contrast, the female data exhibits the opposite pattern—higher spectral centroid values are associated with real audio. Consequently, when the male model encounters female audio with a high spectral centroid, it incorrectly associates this with the fake class. SHAP analysis of the model shows that higher values of spectral centroid—the most influential feature in the model—consistently contribute toward predictions of the fake class in the male data. Taking a look at the distributions of spectral centroid in the raw data, this pattern is visible. This is another instance where SHAP interpretations agree with manual analysis.
 
 <figure style="text-align: center;">
 
@@ -408,41 +420,29 @@ Moving on, similar to the simple female neural network, the female XGBoost model
 
 The complex male neural network performed significantly worse on the female dataset compared to the simple male neural network. This is likely due to the increased model complexity, which makes it more prone to overfitting the training data—in this case, male-specific acoustic patterns. Additionally, the SHAP feature importance plots reveal noticeable differences between the two models. Not only do the top features differ in ranking, but some—such as spectral centroid—also exhibit reversed directional influence. For example, while low spectral centroid values may push predictions toward the fake class in the simple model, they contribute to real predictions in the complex model. These inconsistencies further suggest that the complex model has captured more intricate, but less transferable, decision rules.
 
-For the simple male model, low spectral bandwidth values tend to push predictions toward the real class. However, in the raw female dataset, the relationship is reversed—fake samples are more likely to have lower spectral bandwidth values. This mismatch likely contributes to the model’s misclassification of female audio, as it incorrectly associates low spectral bandwidth with authenticity. This pattern is visible when comparing the distributions of spectral bandwidth in the male and female datasets.
-
-</figure>
-
-<figure style="text-align: center;">
-
-<img src="images/spec_band_plot.png" width="99%"/>
-
-<figcaption>Figure 21: Spectral Bandwidth: Real vs. Fake by Gender</figcaption>
-
-</figure>
-
-In summary, model complexity plays a nuanced role in generalization of these models across gender. In most cases, increased complexity leads to reduced generalization, as more complex models are prone to overfitting patterns specific to their training data. However, there are some exceptions, where complex models coincidentally discover feature interactions that enable moderate cross-gender generalization. These instances highlight the unpredictable nature of deep learnig models and reinforce the importance of careful evaluation when extending model predictions to out-of-distribution groups.
+In summary, model complexity plays a nuanced role in generalization of these models across gender. In most cases, increased complexity leads to reduced generalization, as more complex models are prone to overfitting patterns specific to their training data. However, there are some exceptions, where complex models coincidentally discover feature interactions that enable moderate cross-gender generalization. These instances highlight the unpredictable nature of deep learnig models and reinforce the importance of careful evaluation when extending model predictions to groups outside of the training data. Additionally, while tools like SHAP offer valuable insights into model decision-making, they should be interpreted with caution. SHAP values show directional tendencies of individual features, but they do not capture the full complexity of feature interactions or the true decision boundary of the model. Over-reliance on such explanations without context or validation can lead to oversimplified and potentially misleading conclusions about model behavior.
 
 # Deepfake Song Audio Analysis
 
 The second half of this project focuses on deepfake song audio, generated by AI models trained to synthesize singing voices. Similar to speech deepfakes, these song deepfakes are typically detected using CNNs on spectrogram images. However, the same feature-based numeric extraction used in the speech analysis is applied here.
 
-## Datasets
+## Dataset
 
-Explain sonics dataset, suno and udio generator
+The Sonics dataset consists of thousands of real and AI generated songs. The real songs were collected from various genres and artists, then cataloged with metadata, including the song name and a YouTube URL. As for the AI generated songs, two generative models, Suno and Udio, are employed. These models are advanced audio generators capable of synthesizing realistic-sounding songs across many genres and vocal styles. Using the real portion of the Sonics dataset as input prompts or templates, Suno and Udio produced thousands of fake audio samples that mimic a wide range of musical characteristics, including different singers, instruments, and production qualities.
 
 ## Data pre-processing
 
-Preprocessing for the deepfake song dataset followed a similar philosophy to the speech pipeline, with adjustments tailored to the structure of musical recordings. For each song, 120 seconds of audio were randomly sampled. These 120-second clips were then divided into sequential 1-second intervals for feature extraction.
+Preprocessing for the deepfake song dataset followed a similar structure to the speech analysis, with some adjustments. For each song, 120 seconds of audio were randomly sampled at 16000 kHz for efficiency. These 120-second clips were then divided into sequential 1-second intervals, where the relevant features were then extracted.
 
-To prevent data leakage and ensure generalizable model evaluation, all train/test and cross-validation splits were song-aware. Specifically, all 1-second samples from a given song were grouped together and kept within the same fold or partition. This ensured that no information from a single song appeared in both training and testing sets, preserving the integrity of the evaluation. Balanced representation of real and fake samples was also maintained through class-aware sampling where necessary.
+To prevent data leakage, all train/test and cross-validation splits were song-aware. Specifically, all 1-second samples from a given song were grouped together and kept within the same fold or partition. This ensured that no samples from a single song appeared in both training and testing sets. Balanced representation of real and fake samples was also maintained through class-aware sampling where necessary.
 
-After the data were extracted and grouped, features were normalized.
+After feature extraction and grouping, all features were normalized, and a grid search was conducted to find the best hyperparameter configurations for the model.
 
-Grid search was used to find the best hyperparameters
+## Extreme Gradient Boosting (XGBoost)
 
-## Extreme Gradient Boosting
+XGBoost was chosen for its efficiency, ease of deployment, and proven strong performance on similar tasks.
 
-Explain hyperparameters of the best model, lr 0.3, max depth 5, n estimators 200, 99.8% accuracy,
+The best-performing XGBoost model achieved an impressive 99.8% accuracy on the test set.
 
 <figure style="text-align: center;">
 
@@ -452,7 +452,7 @@ Explain hyperparameters of the best model, lr 0.3, max depth 5, n estimators 200
 
 </figure>
 
-\*now we view shap
+Now, taking a look at the SHAP feature importance plot,
 
 <figure style="text-align: center;">
 
@@ -462,8 +462,8 @@ Explain hyperparameters of the best model, lr 0.3, max depth 5, n estimators 200
 
 </figure>
 
-\*interpret comprehensively, this actually has actionable insights, as the most interpretable features are at the top 3
+The top three features—spectral bandwidth, spectral centroid, and zero crossing rate—show consistent and interpretable patterns. The model tends to predict audio as real when spectral bandwidth and spectral centroid are high, and as fake when they are low. This makes sense because real audio, like natural singing, usually contains richer high-frequency content and more spectral variation, while fake audio is often smoother and less detailed, due to limitations in how the generators produce sound. In contrast, lower values fo the zero crossing rate suggest real audio, while higher values suggest fake. This could be because some fake audio contains unnatural noise or rapid signal changes, which raises the zero crossing rate. These patterns are useful not just for improving model performance, but also for understanding what makes fake audio sound different.
 
 ## Deployment
 
-A simple Hugging Face Streamlit app was made
+A simple Hugging Face Streamlit app was created to provide an interactive interface for testing and demonstrating the best XGBoost model. After training, the model was exported and integrated into the Streamlit environment. The app allows users to upload audio files, which are then automatically processed and transformed into the same features used during training (e.g., spectral bandwidth, centroid, MFCCs). These features are fed into the hosted model to return a real or fake prediction.
